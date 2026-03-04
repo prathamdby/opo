@@ -121,6 +121,46 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # ── 6b. Generate PR title and body from the diff ─────────────────────
+      - name: Generate PR metadata
+        if: steps.diff.outputs.changed == 'true'
+        id: pr-meta
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+          TASK: ${{ steps.resolve.outputs.task }}
+        run: |
+          opencode run \
+            "Run: git diff HEAD | cat
+             Analyze the diff. Then write the file .opo-pr.json with this exact JSON structure:
+             {\"title\": \"<conventional commit title>\", \"body\": \"<PR body>\"}
+             Title rules: format is 'type: description', max 50 characters,
+             types are feat/fix/refactor/docs/test/chore/style/perf, no scope, imperative mood.
+             Body rules: mandatory blank line after the title, then bullet points starting with '-',
+             capitalize first word of each bullet, no periods, no blank lines between bullets.
+             Write only .opo-pr.json. Do not modify any other file."
+
+          if [ -f .opo-pr.json ] && jq -e . .opo-pr.json > /dev/null 2>&1; then
+            PR_TITLE=$(jq -r '.title' .opo-pr.json | cut -c1-256)
+            DELIM=$(openssl rand -hex 8)
+            {
+              echo "pr_body<<${DELIM}"
+              jq -r '.body' .opo-pr.json
+              printf '\n\n---\n*Opened by [opo](https://github.com/prathamdby/opo)*'
+              echo "${DELIM}"
+            } >> "$GITHUB_OUTPUT"
+          else
+            PR_TITLE=$(echo "$TASK" | head -n1 | cut -c1-256)
+            DELIM=$(openssl rand -hex 8)
+            {
+              echo "pr_body<<${DELIM}"
+              printf 'See the diff for changes.\n\n---\n*Opened by [opo](https://github.com/prathamdby/opo)*'
+              echo "${DELIM}"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
+          rm -f .opo-pr.json
+
       # ── 7. Create a deterministic branch name ────────────────────────────
       - name: Create branch
         if: steps.diff.outputs.changed == 'true'
@@ -142,12 +182,13 @@ jobs:
       - name: Commit changes
         if: steps.diff.outputs.changed == 'true'
         env:
-          TASK: ${{ steps.resolve.outputs.task }}
+          PR_TITLE: ${{ steps.pr-meta.outputs.pr_title }}
         run: |
+          rm -f .opo-pr.json
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "feat: $(echo "$TASK" | cut -c1-72)"
+          git commit -m "$PR_TITLE"
 
       # ── 9. Push branch ────────────────────────────────────────────────────
       - name: Push branch
@@ -177,27 +218,14 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TASK: ${{ steps.resolve.outputs.task }}
+          PR_TITLE: ${{ steps.pr-meta.outputs.pr_title }}
+          PR_BODY: ${{ steps.pr-meta.outputs.pr_body }}
           BASE: ${{ steps.resolve.outputs.base }}
           BRANCH: ${{ steps.branch.outputs.name }}
         run: |
-          TITLE=$(echo "$TASK" | head -n1 | cut -c1-256)
           gh pr create \
-            --title "$TITLE" \
-            --body "## Summary
-
-          $TITLE
-
-          ## Changes
-
-          See the diff for the full list of modified files.
-
-          ## Testing
-
-          Review the diff and verify the changes satisfy the task before merging.
-
-          ---
-          *Opened by [opo](https://github.com/prathamdby/opo)*" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
             --base "$BASE" \
             --head "$BRANCH" \
             --label "opo"
