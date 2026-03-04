@@ -49,6 +49,14 @@ Comment on any issue or pull request:
 
 opo reacts with 👀 and opens a pull request when done. Only owners, members, and collaborators can trigger it this way.
 
+On an existing opo PR, comment with a follow-up task:
+
+```
+/opo also add a loading spinner while the form submits
+```
+
+opo detects the opo branch and pushes to the same PR. No new PR opened.
+
 ### From the Actions tab
 
 Go to **Actions** → **opo agent** → **Run workflow**, enter your task, and run.

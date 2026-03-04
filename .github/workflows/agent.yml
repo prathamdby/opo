@@ -53,18 +53,35 @@ jobs:
       - name: Resolve task and base branch
         id: resolve
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISPATCH_TASK: ${{ inputs.task }}
           DISPATCH_BRANCH: ${{ inputs.branch }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           EVENT_NAME: ${{ github.event_name }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          IS_PR: ${{ github.event.issue.pull_request && 'true' || '' }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             printf '%s\n' "$DISPATCH_TASK" > "$RUNNER_TEMP/.opo-task"
             BASE="${DISPATCH_BRANCH:-$DEFAULT_BRANCH}"
+            echo "mode=new" >> "$GITHUB_OUTPUT"
           else
             echo "$COMMENT_BODY" | sed 's|^/opo[[:space:]]*||' | head -n1 > "$RUNNER_TEMP/.opo-task"
-            BASE="$DEFAULT_BRANCH"
+            if [ -n "$IS_PR" ]; then
+              PR_BRANCH=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${ISSUE_NUMBER}" --jq '.head.ref')
+              if echo "$PR_BRANCH" | grep -q '^opo/'; then
+                echo "mode=followup" >> "$GITHUB_OUTPUT"
+                echo "pr_branch=$PR_BRANCH" >> "$GITHUB_OUTPUT"
+                BASE="$PR_BRANCH"
+              else
+                echo "mode=new" >> "$GITHUB_OUTPUT"
+                BASE="$DEFAULT_BRANCH"
+              fi
+            else
+              echo "mode=new" >> "$GITHUB_OUTPUT"
+              BASE="$DEFAULT_BRANCH"
+            fi
           fi
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
@@ -188,7 +205,7 @@ jobs:
 
       # ── 9. Create a deterministic branch name ────────────────────────────
       - name: Create branch
-        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true && steps.resolve.outputs.mode != 'followup'
         id: branch
         run: |
           SLUG=$(cat "$RUNNER_TEMP/.opo-task" \
@@ -219,7 +236,7 @@ jobs:
         id: push-branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ steps.branch.outputs.name }}
+          BRANCH: ${{ steps.branch.outputs.name || steps.resolve.outputs.pr_branch }}
         run: |
           git remote set-url origin \
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
@@ -227,7 +244,7 @@ jobs:
 
       # ── 12. Ensure the opo label exists in this repo ─────────────────────
       - name: Ensure opo label exists
-        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true && steps.resolve.outputs.mode != 'followup'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -238,7 +255,7 @@ jobs:
 
       # ── 13. Open pull request ────────────────────────────────────────────
       - name: Open pull request
-        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true && steps.resolve.outputs.mode != 'followup'
         id: open-pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -261,13 +278,27 @@ jobs:
           success() &&
           steps.diff.outputs.changed == 'true' &&
           github.event_name == 'issue_comment' &&
-          inputs.dry_run != true
+          inputs.dry_run != true &&
+          steps.resolve.outputs.mode != 'followup'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ steps.open-pr.outputs.pr_url }}
         run: |
           gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
             -f body="PR opened: $PR_URL"
+
+      # ── 14b. Post follow-up comment ──────────────────────────────────────
+      - name: Post follow-up comment
+        if: >-
+          success() &&
+          steps.diff.outputs.changed == 'true' &&
+          github.event_name == 'issue_comment' &&
+          steps.resolve.outputs.mode == 'followup'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="Changes pushed to this PR."
 
       # ── 15. Post no-changes comment ──────────────────────────────────────
       - name: Post no-changes comment
@@ -283,7 +314,7 @@ jobs:
 
       # ── 16. Cleanup — delete remote branch on failure ────────────────────
       - name: Cleanup branch on failure
-        if: failure() && steps.push-branch.outcome == 'success'
+        if: failure() && steps.push-branch.outcome == 'success' && steps.resolve.outputs.mode != 'followup'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.branch.outputs.name }}
