@@ -145,7 +145,7 @@ jobs:
             {
               echo "pr_body<<${DELIM}"
               jq -r '.body' .opo-pr.json
-              printf '\n\n---\n*Opened by [opo](https://github.com/prathamdby/opo)*'
+              printf '\n\n---\n*Opened by [opo](https://github.com/prathamdby/opo)*\n'
               echo "${DELIM}"
             } >> "$GITHUB_OUTPUT"
           else
@@ -153,7 +153,7 @@ jobs:
             DELIM=$(openssl rand -hex 8)
             {
               echo "pr_body<<${DELIM}"
-              printf 'See the diff for changes.\n\n---\n*Opened by [opo](https://github.com/prathamdby/opo)*'
+              printf 'See the diff for changes.\n\n---\n*Opened by [opo](https://github.com/prathamdby/opo)*\n'
               echo "${DELIM}"
             } >> "$GITHUB_OUTPUT"
           fi
