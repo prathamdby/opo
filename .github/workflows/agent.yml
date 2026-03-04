@@ -55,8 +55,13 @@ jobs:
             TASK=$(echo "$COMMENT_BODY" | sed 's|^/opo[[:space:]]*||' | head -n1)
             BASE="$DEFAULT_BRANCH"
           fi
-          echo "task=$TASK" >> "$GITHUB_OUTPUT"
-          echo "base=$BASE"  >> "$GITHUB_OUTPUT"
+          DELIM=$(openssl rand -hex 8)
+          {
+            echo "task<<${DELIM}"
+            printf '%s' "$TASK"
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
       # ── 2. Validate required secret is present ───────────────────────────
       - name: Validate secrets
