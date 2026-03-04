@@ -128,7 +128,8 @@ jobs:
             | tr -cs '[:alnum:]' '-' \
             | sed 's/^-//;s/-$//' \
             | cut -c1-50)
-          BRANCH="opo/${SLUG}"
+          SHA=$(git rev-parse --short HEAD)
+          BRANCH="opo/${SLUG}-${SHA}"
           git checkout -b "$BRANCH"
           echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
 
