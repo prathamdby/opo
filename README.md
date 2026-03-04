@@ -7,10 +7,15 @@ An async background coding agent 🎨. Give it a task, it edits code, commits, a
 
 ## Setup ⚙️
 
-### 1. Copy the template files 📂
+### 1. Install opo 🚀
 
-Copy these files into your repository:
+Run this command in your repository:
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/prathamdby/opo/main/install.sh | bash
+```
+
+Or copy the template files manually:
 - `.github/workflows/agent.yml` 📄
 - `opencode.jsonc` 📋
 - `AGENTS.md` 📝
