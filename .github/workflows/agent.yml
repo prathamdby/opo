@@ -186,15 +186,15 @@ jobs:
             --title "$TITLE" \
             --body "## Summary
 
-          $TASK
+          $TITLE
 
-          ## Changes Made
+          ## Changes
 
-          See the diff for a full list of modified files and lines.
+          See the diff for the full list of modified files.
 
-          ## Testing Notes
+          ## Testing
 
-          Review the changes and verify they satisfy the task requirements before merging.
+          Review the diff and verify the changes satisfy the task before merging.
 
           ---
           *Opened by [opo](https://github.com/prathamdby/opo)*" \
