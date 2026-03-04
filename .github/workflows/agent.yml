@@ -79,7 +79,15 @@ jobs:
 
       # ── 4. Install OpenCode CLI ───────────────────────────────────────────
       - name: Install OpenCode
-        run: npm install -g @opencode-ai/cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download --repo anomalyco/opencode \
+            --pattern "opencode-linux-x64.tar.gz" \
+            --dir /tmp/oc \
+            --clobber
+          tar -xzf /tmp/oc/opencode-linux-x64.tar.gz -C /tmp/oc
+          sudo install -m 755 /tmp/oc/opencode /usr/local/bin/opencode
 
       # ── 5a. Run agent — Big Pickle (primary) ─────────────────────────────
       - name: Run agent (Big Pickle)
