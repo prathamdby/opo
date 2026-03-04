@@ -27,7 +27,8 @@ function repoSlug(): string {
 }
 
 (async () => {
-  const BASE = "https://raw.githubusercontent.com/prathamdby/opo/main";
+const VERSION = "v1.0.0";
+const BASE = `https://raw.githubusercontent.com/prathamdby/opo/refs/tags/${VERSION}`;
   const [workflowYml, opencodeJsonc, agentsMd] = await Promise.all([
     fetch(BASE + "/.github/workflows/agent.yml").then((r) => {
       if (!r.ok) throw new Error("HTTP " + r.status);
