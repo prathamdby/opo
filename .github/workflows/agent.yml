@@ -68,7 +68,9 @@ jobs:
 
       # ── 3. Install OpenCode CLI ───────────────────────────────────────────
       - name: Install OpenCode
-        run: curl -fsSL https://opencode.ai/install.sh | sh
+        run: |
+          curl -fsSL https://opencode.ai/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # ── 4a. Run agent — Big Pickle (primary) ─────────────────────────────
       - name: Run agent (Big Pickle)
