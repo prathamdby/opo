@@ -48,19 +48,12 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            TASK="$DISPATCH_TASK"
+            printf '%s\n' "$DISPATCH_TASK" > "$RUNNER_TEMP/.opo-task"
             BASE="${DISPATCH_BRANCH:-$DEFAULT_BRANCH}"
           else
-            # Strip the /opo prefix from the comment body; take the first line only
-            TASK=$(echo "$COMMENT_BODY" | sed 's|^/opo[[:space:]]*||' | head -n1)
+            echo "$COMMENT_BODY" | sed 's|^/opo[[:space:]]*||' | head -n1 > "$RUNNER_TEMP/.opo-task"
             BASE="$DEFAULT_BRANCH"
           fi
-          DELIM=$(openssl rand -hex 8)
-          {
-            echo "task<<${DELIM}"
-            printf '%s' "$TASK"
-            echo "${DELIM}"
-          } >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
       # ── 2. Validate required secret is present ───────────────────────────
@@ -100,16 +93,14 @@ jobs:
         continue-on-error: true
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          TASK: ${{ steps.resolve.outputs.task }}
-        run: opencode run "$TASK"
+        run: opencode run "$(cat "$RUNNER_TEMP/.opo-task")"
 
       # ── 5b. Run agent — MiniMax fallback (only if Big Pickle failed) ──────
       - name: Run agent (MiniMax fallback)
         if: steps.big-pickle.outcome == 'failure'
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          TASK: ${{ steps.resolve.outputs.task }}
-        run: opencode run -m opencode/minimax-m2.5-free "$TASK"
+        run: opencode run -m opencode/minimax-m2.5-free "$(cat "$RUNNER_TEMP/.opo-task")"
 
       # ── 6. Detect whether the agent changed anything ──────────────────────
       - name: Check for changes
@@ -127,7 +118,6 @@ jobs:
         id: pr-meta
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
-          TASK: ${{ steps.resolve.outputs.task }}
         run: |
           opencode run \
             "Run: git diff HEAD | cat
@@ -149,7 +139,7 @@ jobs:
               echo "${DELIM}"
             } >> "$GITHUB_OUTPUT"
           else
-            PR_TITLE=$(echo "$TASK" | head -n1 | cut -c1-256)
+            PR_TITLE=$(head -n1 "$RUNNER_TEMP/.opo-task" | cut -c1-256)
             DELIM=$(openssl rand -hex 8)
             {
               echo "pr_body<<${DELIM}"
@@ -165,10 +155,8 @@ jobs:
       - name: Create branch
         if: steps.diff.outputs.changed == 'true'
         id: branch
-        env:
-          TASK: ${{ steps.resolve.outputs.task }}
         run: |
-          SLUG=$(echo "$TASK" \
+          SLUG=$(cat "$RUNNER_TEMP/.opo-task" \
             | tr '[:upper:]' '[:lower:]' \
             | tr -cs '[:alnum:]' '-' \
             | sed 's/^-//;s/-$//' \

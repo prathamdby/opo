@@ -1,0 +1,28 @@
+install.sh — Bash Installer for opo
+====================================
+
+Invocation
+----------
+curl -fsSL https://raw.githubusercontent.com/prathamdby/opo/main/install.sh | bash
+
+
+Script Flow
+-----------
+Entire body wrapped in main() called at EOF (curl|bash partial-download safety).
+
+1. cd to git repo root
+2. Detect repo slug from git remote (fallback: <owner>/<repo>)
+3. curl 3 files from raw.githubusercontent.com/prathamdby/opo/main:
+   - .github/workflows/agent.yml  → always overwrite
+   - opencode.jsonc               → always overwrite
+   - AGENTS.md                    → append if marker absent, skip if present, create if missing
+4. Append .opencode/ to .gitignore if not already there
+5. Print setup steps with repo-specific deep links
+
+Marker for AGENTS.md dedup: "# opo agent instructions" (first line of opo block).
+
+
+Files Changed
+-------------
+Create  install.sh
+Edit    README.md (replace manual copy step with curl one-liner)
