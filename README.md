@@ -1,99 +1,93 @@
-# opo 🚀
+# opo
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![opo agent](https://github.com/prathamdby/opo/actions/workflows/agent.yml/badge.svg)](https://github.com/prathamdby/opo/actions/workflows/agent.yml)
 
-An async background coding agent 🎨. Give it a task, it edits code, commits, and opens a pull request. Runs inside GitHub Actions. Powered by [OpenCode](https://opencode.ai) and [Big Pickle](https://opencode.ai/docs/zen/) (free model, no payment required).
+Tell opo what to change in your code. It edits the files, opens a pull request, and waits. Runs on GitHub Actions — no servers to manage.
 
-## Setup ⚙️
+---
 
-### 1. Install opo 🚀
+## Setup
 
-Run this command in your repository:
+### Step 1 — Add opo to your repo
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/prathamdby/opo/main/install.sh | bash
 ```
 
-Or copy the template files manually:
-- `.github/workflows/agent.yml` 📄
-- `opencode.jsonc` 📋
-- `AGENTS.md` 📝
+### Step 2 — Get a free API key
 
-### 2. Get your free OpenCode Zen API key 🔑
+1. Go to [opencode.ai/zen](https://opencode.ai/zen) and sign in (no credit card needed)
+2. Open **API Keys** and click **Create API Key**
+3. Copy the key
 
-1. Go to [opencode.ai/zen](https://opencode.ai/zen)
-2. Click **Sign In** and create a free account
-3. No payment method or credit card is required
-4. Once signed in, navigate to the **API Keys** section
-5. Click **Create API Key** and copy the key
+### Step 3 — Add the key to GitHub
 
-### 3. Add the secret to your repository 🔐
+1. In your repository, go to **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret**
+3. Name: `OPENCODE_ZEN_API_KEY` — Value: your key
+4. Click **Add secret**
 
-1. Go to your repository on GitHub
-2. Click **Settings** > **Secrets and variables** > **Actions**
-3. Click **New repository secret**
-4. Name: `OPENCODE_ZEN_API_KEY`
-5. Value: paste your API key from step 2
-6. Click **Add secret**
+### Step 4 — Allow Actions to open pull requests
 
-That's it. opo is ready. ✨
+1. In **Settings**, go to **Actions** → **General**
+2. Under **Workflow permissions**, select **Read and write permissions**
+3. Check **Allow GitHub Actions to create and approve pull requests**
+4. Save
 
-## Usage 💻
+---
 
-### Via CLI ⌨️
+## Usage
+
+### From a GitHub issue or PR
+
+Comment on any issue or pull request:
+
+```
+/opo add error handling to the login form
+```
+
+opo reacts with 👀 and opens a pull request when done. Only owners, members, and collaborators can trigger it this way.
+
+### From the Actions tab
+
+Go to **Actions** → **opo agent** → **Run workflow**, enter your task, and run.
+
+### From the GitHub CLI
 
 ```bash
-gh workflow run agent.yml -f task="Add input validation to the signup form" -f branch="main"
+gh workflow run agent.yml -f task="add input validation to the signup form"
 ```
 
-### Via GitHub UI 🖥️
+---
 
-1. Go to the **Actions** tab in your repository
-2. Select **opo agent** from the left sidebar
-3. Click **Run workflow**
-4. Enter your task description and optionally specify a branch
-5. Click **Run workflow**
+## How it works
 
-### Via issue comment 💬
+1. opo reads `AGENTS.md` for context about your project
+2. It edits the relevant files
+3. It opens a pull request on a new branch (`opo/your-task-name`)
+4. You review and merge
 
-Comment on any issue or PR:
+Nothing merges automatically.
 
-```
-/opo add error handling to the payment module
-```
+---
 
-Only repository owners, org members, and collaborators can trigger the agent via comments.
+## Customizing
 
-## How it works ⚡
+Edit `AGENTS.md` to tell opo about your project — how to run tests, which files to avoid, conventions your team follows. It reads this file before every task.
 
-1. You provide a task (via CLI, GitHub UI, or issue comment) 📝
-2. A GitHub Actions runner spins up and checks out your repository 🔄
-3. OpenCode agent reads your `AGENTS.md` for project context 📖
-4. The agent edits code, creates a branch (`opo/descriptive-name`), and commits changes ✏️
-5. A pull request is opened for your review 🔀
-6. If the primary model (Big Pickle) fails, it automatically retries with MiniMax M2.5 Free 🔁
+---
 
-All changes require human review before merging.
+## Things to know
 
-## Customization 🎛️
+- **Tasks.** Keep them focused and specific. Vague instructions produce vague results.
+- **Rate limits.** If the primary model is rate-limited, opo retries with a fallback automatically.
+- **Privacy.** The free model may use your code for training. Switch to a paid model in `opencode.jsonc` if needed.
+- **CI.** GitHub doesn't trigger CI on PRs opened by Actions tokens. CI runs when you interact with the PR.
+- **Trust.** Don't install opo in repos with untrusted collaborators — they can trigger the agent on your runner.
 
-Edit `AGENTS.md` to tailor the agent for your project:
+---
 
-- Add build commands, test commands, or framework-specific instructions 🛠️
-- Adjust file handling rules for your codebase size 📊
-- Add project-specific conventions or constraints 📋
-
-The agent reads `AGENTS.md` before every task.
-
-## Known limitations ⚠️
-
-- **Context window** 📏: Big Pickle's effective context is ~50-70K tokens (despite a 200K window). Keep tasks focused.
-- **Rate limiting** 🚦: The free tier has rate limits. If you hit them, the agent automatically falls back to MiniMax M2.5 Free.
-- **Hanging** 🐛: OpenCode's GitHub Action has known hanging bugs. The 60-minute timeout is a safeguard.
-- **Privacy** 🔒: Big Pickle's free tier data may be used for model training. Switch to a paid model in `opencode.jsonc` if this matters.
-- **CI triggers** ⚡: PRs created by `GITHUB_TOKEN` don't automatically trigger other workflows. CI runs when a human interacts with the PR.
-
-## License 📜
+## License
 
 [MIT](LICENSE)

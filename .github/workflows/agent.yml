@@ -11,6 +11,16 @@ on:
         description: "Base branch to work from"
         required: false
         type: string
+      opencode_version:
+        description: "OpenCode version to install (e.g. v1.2.15)"
+        required: false
+        type: string
+        default: "v1.2.15"
+      dry_run:
+        description: "Run agent without creating a PR"
+        required: false
+        type: boolean
+        default: false
 
   issue_comment:
     types: [created]
@@ -30,8 +40,10 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    concurrency:
+      group: opo-${{ github.event.issue.number || github.ref }}
+      cancel-in-progress: true
     permissions:
-      id-token: write
       contents: write
       pull-requests: write
       issues: write
@@ -56,7 +68,29 @@ jobs:
           fi
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
 
-      # ── 2. Validate required secret is present ───────────────────────────
+      # ── 2. Acknowledge trigger via reaction ───────────────────────────────
+      - name: Acknowledge trigger
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='eyes'
+
+      # ── 3. Validate task ──────────────────────────────────────────────────
+      - name: Validate task
+        run: |
+          TASK=$(cat "$RUNNER_TEMP/.opo-task")
+          if [ -z "$(echo "$TASK" | tr -d '[:space:]')" ]; then
+            echo "::error::Task is empty. Provide a task description."
+            exit 1
+          fi
+          if [ "${#TASK}" -gt 2000 ]; then
+            echo "::error::Task exceeds 2000 characters. Be more concise."
+            exit 1
+          fi
+
+      # ── 4. Validate required secret is present ───────────────────────────
       - name: Validate secrets
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
@@ -67,7 +101,7 @@ jobs:
             exit 1
           fi
 
-      # ── 3. Checkout ───────────────────────────────────────────────────────
+      # ── 5. Checkout ───────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -75,19 +109,20 @@ jobs:
           fetch-depth: 50
           persist-credentials: false
 
-      # ── 4. Install OpenCode CLI ───────────────────────────────────────────
+      # ── 6. Install OpenCode CLI ───────────────────────────────────────────
       - name: Install OpenCode
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_VERSION: ${{ inputs.opencode_version || 'v1.2.15' }}
         run: |
-          gh release download --repo anomalyco/opencode \
+          gh release download "$OPENCODE_VERSION" --repo anomalyco/opencode \
             --pattern "opencode-linux-x64.tar.gz" \
             --dir /tmp/oc \
             --clobber
           tar -xzf /tmp/oc/opencode-linux-x64.tar.gz -C /tmp/oc
           sudo install -m 755 /tmp/oc/opencode /usr/local/bin/opencode
 
-      # ── 5a. Run agent — Big Pickle (primary) ─────────────────────────────
+      # ── 7a. Run agent — Big Pickle (primary) ─────────────────────────────
       - name: Run agent (Big Pickle)
         id: big-pickle
         continue-on-error: true
@@ -95,14 +130,14 @@ jobs:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
         run: opencode run "$(cat "$RUNNER_TEMP/.opo-task")"
 
-      # ── 5b. Run agent — MiniMax fallback (only if Big Pickle failed) ──────
+      # ── 7b. Run agent — MiniMax fallback (only if Big Pickle failed) ──────
       - name: Run agent (MiniMax fallback)
         if: steps.big-pickle.outcome == 'failure'
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
         run: opencode run -m opencode/minimax-m2.5-free "$(cat "$RUNNER_TEMP/.opo-task")"
 
-      # ── 6. Detect whether the agent changed anything ──────────────────────
+      # ── 8. Detect whether the agent changed anything ──────────────────────
       - name: Check for changes
         id: diff
         run: |
@@ -112,7 +147,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # ── 6b. Generate PR title and body from the diff ─────────────────────
+      # ── 8b. Generate PR title and body from the diff ─────────────────────
       - name: Generate PR metadata
         if: steps.diff.outputs.changed == 'true'
         id: pr-meta
@@ -151,9 +186,9 @@ jobs:
           echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
           rm -f .opo-pr.json
 
-      # ── 7. Create a deterministic branch name ────────────────────────────
+      # ── 9. Create a deterministic branch name ────────────────────────────
       - name: Create branch
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
         id: branch
         run: |
           SLUG=$(cat "$RUNNER_TEMP/.opo-task" \
@@ -166,9 +201,9 @@ jobs:
           git checkout -b "$BRANCH"
           echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
 
-      # ── 8. Commit all changes ─────────────────────────────────────────────
+      # ── 10. Commit all changes ─────────────────────────────────────────────
       - name: Commit changes
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
         env:
           PR_TITLE: ${{ steps.pr-meta.outputs.pr_title }}
         run: |
@@ -178,9 +213,9 @@ jobs:
           git add -A
           git commit -m "$PR_TITLE"
 
-      # ── 9. Push branch ────────────────────────────────────────────────────
+      # ── 11. Push branch ────────────────────────────────────────────────────
       - name: Push branch
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
         id: push-branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -190,9 +225,9 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git push origin "$BRANCH"
 
-      # ── 10. Ensure the opo label exists in this repo ─────────────────────
+      # ── 12. Ensure the opo label exists in this repo ─────────────────────
       - name: Ensure opo label exists
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -201,9 +236,10 @@ jobs:
             --description "Opened by the opo agent" \
             2>/dev/null || true
 
-      # ── 11. Open pull request ────────────────────────────────────────────
+      # ── 13. Open pull request ────────────────────────────────────────────
       - name: Open pull request
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != true
+        id: open-pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_TITLE: ${{ steps.pr-meta.outputs.pr_title }}
@@ -211,14 +247,41 @@ jobs:
           BASE: ${{ steps.resolve.outputs.base }}
           BRANCH: ${{ steps.branch.outputs.name }}
         run: |
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
             --base "$BASE" \
             --head "$BRANCH" \
-            --label "opo"
+            --label "opo")
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
 
-      # ── 12. Cleanup — delete remote branch on failure ────────────────────
+      # ── 14. Post PR link comment ─────────────────────────────────────────
+      - name: Post PR link comment
+        if: >-
+          success() &&
+          steps.diff.outputs.changed == 'true' &&
+          github.event_name == 'issue_comment' &&
+          inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ steps.open-pr.outputs.pr_url }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="PR opened: $PR_URL"
+
+      # ── 15. Post no-changes comment ──────────────────────────────────────
+      - name: Post no-changes comment
+        if: >-
+          success() &&
+          steps.diff.outputs.changed == 'false' &&
+          github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="No changes needed for this task."
+
+      # ── 16. Cleanup — delete remote branch on failure ────────────────────
       - name: Cleanup branch on failure
         if: failure() && steps.push-branch.outcome == 'success'
         env:
@@ -228,3 +291,12 @@ jobs:
           git remote set-url origin \
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git push origin --delete "$BRANCH" 2>/dev/null || true
+
+      # ── 17. Post failure comment ─────────────────────────────────────────
+      - name: Post failure comment
+        if: failure() && github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="Agent run failed. [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
