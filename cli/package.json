@@ -3,11 +3,20 @@
   "version": "1.0.0",
   "description": "Install the opo AI coding agent into any GitHub repository",
   "type": "module",
-  "bin": { "create-opo": "./dist/index.js" },
-  "engines": { "node": ">=18" },
-  "files": ["dist"],
+  "bin": {
+    "create-opo": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "bun build src/index.ts --target node --outfile dist/index.js --minify && chmod +x dist/index.js",
     "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "bun": "^1.3.10"
   }
 }
