@@ -115,7 +115,7 @@ jobs:
       - name: Check for changes
         id: diff
         run: |
-          if git diff --quiet HEAD; then
+          if [ -z "$(git status --porcelain)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
