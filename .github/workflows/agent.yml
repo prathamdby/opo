@@ -181,8 +181,9 @@ jobs:
           BASE: ${{ steps.resolve.outputs.base }}
           BRANCH: ${{ steps.branch.outputs.name }}
         run: |
+          TITLE=$(echo "$TASK" | head -n1 | cut -c1-256)
           gh pr create \
-            --title "$TASK" \
+            --title "$TITLE" \
             --body "## Summary
 
           $TASK
