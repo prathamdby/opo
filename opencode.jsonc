@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Primary model: Big Pickle (free via OpenCode Zen)
+  // Fallback handled at workflow level, not config level
+  "model": "opencode/big-pickle",
+  // Load project instructions from AGENTS.md
+  "instructions": ["AGENTS.md"],
+  // Context management: critical for Big Pickle which degrades at 50-70K tokens
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
+  // No session sharing -- this is a background agent
+  "share": "disabled"
+}
