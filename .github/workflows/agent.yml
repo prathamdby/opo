@@ -147,6 +147,7 @@ jobs:
       # ── 9. Push branch ────────────────────────────────────────────────────
       - name: Push branch
         if: steps.diff.outputs.changed == 'true'
+        id: push-branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ steps.branch.outputs.name }}
@@ -194,3 +195,14 @@ jobs:
             --base "$BASE" \
             --head "$BRANCH" \
             --label "opo"
+
+      # ── 12. Cleanup — delete remote branch on failure ────────────────────
+      - name: Cleanup branch on failure
+        if: failure() && steps.push-branch.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push origin --delete "$BRANCH" 2>/dev/null || true
