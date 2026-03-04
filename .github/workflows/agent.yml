@@ -58,7 +58,18 @@ jobs:
           echo "task=$TASK" >> "$GITHUB_OUTPUT"
           echo "base=$BASE"  >> "$GITHUB_OUTPUT"
 
-      # ── 2. Checkout ───────────────────────────────────────────────────────
+      # ── 2. Validate required secret is present ───────────────────────────
+      - name: Validate secrets
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+        run: |
+          if [ -z "$OPENCODE_ZEN_API_KEY" ]; then
+            echo "::error::OPENCODE_ZEN_API_KEY secret is not set."
+            echo "::error::Follow the setup steps at https://github.com/prathamdby/opo#setup to get your free API key."
+            exit 1
+          fi
+
+      # ── 3. Checkout ───────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -66,13 +77,11 @@ jobs:
           fetch-depth: 50
           persist-credentials: false
 
-      # ── 3. Install OpenCode CLI ───────────────────────────────────────────
+      # ── 4. Install OpenCode CLI ───────────────────────────────────────────
       - name: Install OpenCode
-        run: |
-          curl -fsSL https://opencode.ai/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: npm install -g @opencode-ai/cli
 
-      # ── 4a. Run agent — Big Pickle (primary) ─────────────────────────────
+      # ── 5a. Run agent — Big Pickle (primary) ─────────────────────────────
       - name: Run agent (Big Pickle)
         id: big-pickle
         continue-on-error: true
@@ -81,7 +90,7 @@ jobs:
           TASK: ${{ steps.resolve.outputs.task }}
         run: opencode run "$TASK"
 
-      # ── 4b. Run agent — MiniMax fallback (only if Big Pickle failed) ──────
+      # ── 5b. Run agent — MiniMax fallback (only if Big Pickle failed) ──────
       - name: Run agent (MiniMax fallback)
         if: steps.big-pickle.outcome == 'failure'
         env:
@@ -89,7 +98,7 @@ jobs:
           TASK: ${{ steps.resolve.outputs.task }}
         run: opencode run -m opencode/minimax-m2.5-free "$TASK"
 
-      # ── 5. Detect whether the agent changed anything ──────────────────────
+      # ── 6. Detect whether the agent changed anything ──────────────────────
       - name: Check for changes
         id: diff
         run: |
@@ -99,7 +108,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # ── 6. Create a deterministic branch name ────────────────────────────
+      # ── 7. Create a deterministic branch name ────────────────────────────
       - name: Create branch
         if: steps.diff.outputs.changed == 'true'
         id: branch
@@ -115,7 +124,7 @@ jobs:
           git checkout -b "$BRANCH"
           echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
 
-      # ── 7. Commit all changes ─────────────────────────────────────────────
+      # ── 8. Commit all changes ─────────────────────────────────────────────
       - name: Commit changes
         if: steps.diff.outputs.changed == 'true'
         env:
@@ -126,7 +135,7 @@ jobs:
           git add -A
           git commit -m "feat: $(echo "$TASK" | cut -c1-72)"
 
-      # ── 8. Push branch ────────────────────────────────────────────────────
+      # ── 9. Push branch ────────────────────────────────────────────────────
       - name: Push branch
         if: steps.diff.outputs.changed == 'true'
         env:
@@ -137,7 +146,7 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git push origin "$BRANCH"
 
-      # ── 9. Ensure the opo label exists in this repo ───────────────────────
+      # ── 10. Ensure the opo label exists in this repo ─────────────────────
       - name: Ensure opo label exists
         if: steps.diff.outputs.changed == 'true'
         env:
@@ -148,7 +157,7 @@ jobs:
             --description "Opened by the opo agent" \
             2>/dev/null || true
 
-      # ── 10. Open pull request ─────────────────────────────────────────────
+      # ── 11. Open pull request ────────────────────────────────────────────
       - name: Open pull request
         if: steps.diff.outputs.changed == 'true'
         env:
