@@ -5,7 +5,7 @@
   "model": "opencode/big-pickle",
   // Load project instructions from AGENTS.md
   "instructions": ["AGENTS.md"],
-  // Context management: critical for Big Pickle which degrades at 50-70K tokens
+  // Context management: Big Pickle degrades at 50-70K tokens
   "compaction": {
     "auto": true,
     "prune": true,
