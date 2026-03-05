@@ -1,11 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  // Primary model: Big Pickle (free via OpenCode Zen)
-  // Fallback handled at workflow level, not config level
+  // Primary model (change to any OpenCode-compatible model)
   "model": "opencode/big-pickle",
   // Load project instructions from AGENTS.md
   "instructions": ["AGENTS.md"],
-  // Context management: Big Pickle degrades at 50-70K tokens
+  // Context management: some models degrade at high token counts
   "compaction": {
     "auto": true,
     "prune": true,

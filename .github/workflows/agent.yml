@@ -139,17 +139,17 @@ jobs:
           tar -xzf /tmp/oc/opencode-linux-x64.tar.gz -C /tmp/oc
           sudo install -m 755 /tmp/oc/opencode /usr/local/bin/opencode
 
-      # ── 7a. Run agent — Big Pickle (primary) ─────────────────────────────
-      - name: Run agent (Big Pickle)
-        id: big-pickle
+      # ── 7a. Run agent (primary, uses opencode.jsonc model) ───────────────
+      - name: Run agent
+        id: agent
         continue-on-error: true
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
         run: opencode run "$(cat "$RUNNER_TEMP/.opo-task")"
 
-      # ── 7b. Run agent — MiniMax fallback (only if Big Pickle failed) ──────
-      - name: Run agent (MiniMax fallback)
-        if: steps.big-pickle.outcome == 'failure'
+      # ── 7b. Run agent fallback (only if primary failed) ───────────────────
+      - name: Run agent (fallback)
+        if: steps.agent.outcome == 'failure'
         env:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
         run: opencode run -m opencode/minimax-m2.5-free "$(cat "$RUNNER_TEMP/.opo-task")"
