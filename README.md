@@ -69,6 +69,26 @@ gh workflow run agent.yml -f task="add input validation to the signup form"
 
 ---
 
+## Writing effective tasks
+
+Good tasks say **what** to change and **where**. Great tasks also say **why**.
+
+```
+/opo add rate limiting to POST /api/users — max 100 req/min per IP
+```
+
+```
+/opo fix the unhandled promise rejection in src/lib/auth.ts handleLogin
+```
+
+```
+/opo replace moment.js with date-fns in the dashboard date formatting utils
+```
+
+Vague tasks like "fix the bug", "clean up the code", or "make it better" force opo to guess — and guessing means worse PRs.
+
+---
+
 ## How it works
 
 1. opo reads `AGENTS.md` for context about your project
@@ -82,13 +102,21 @@ Nothing merges automatically.
 
 ## Customizing
 
-Edit `AGENTS.md` to tell opo about your project — how to run tests, which files to avoid, conventions your team follows. It reads this file before every task.
+Edit `AGENTS.md` to tell opo about your project. It reads this file before every task. Effective additions:
+
+- **Commands** — exact commands with flags: `npm test`, `npm run lint -- path/to/file.ts`
+- **Code style** — show a real example of your preferred patterns rather than describing them
+- **Boundaries** — files or directories opo should never touch
+- **Project structure** — where key code lives and how it's organized
+- **Testing** — how to run tests and what framework you use
+
+Keep it short. A focused 30–50 line file outperforms a 300 line wall of text — large instruction files waste tokens and cause the agent to miss rules.
 
 ---
 
 ## Things to know
 
-- **Tasks.** Keep them focused and specific. Vague instructions produce vague results.
+- **Tasks.** Specific beats vague. Say what to change and where. See [Writing effective tasks](#writing-effective-tasks) for examples.
 - **Rate limits.** If the primary model is rate-limited, opo retries with a fallback automatically.
 - **Privacy.** The free model may use your code for training. Switch to a paid model in `opencode.jsonc` if needed.
 - **CI.** GitHub doesn't trigger CI on PRs opened by Actions tokens. CI runs when you interact with the PR.

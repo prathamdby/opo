@@ -16,7 +16,7 @@ main() {
     curl -fsSL "https://raw.githubusercontent.com/prathamdby/opo/main/opencode.jsonc" -o opencode.jsonc
 
     if [[ -f "AGENTS.md" ]]; then
-        if grep -q "# opo agent instructions" AGENTS.md; then
+        if grep -q "# opo" AGENTS.md && grep -q "## Boundaries" AGENTS.md; then
             echo "already present"
         else
             echo "" >> AGENTS.md
