@@ -1,4 +1,4 @@
-# opo
+# opo 🤖
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![opo agent](https://github.com/prathamdby/opo/actions/workflows/agent.yml/badge.svg)](https://github.com/prathamdby/opo/actions/workflows/agent.yml)
@@ -7,7 +7,7 @@ Tell opo what to change in your code. It edits the files, opens a pull request, 
 
 ---
 
-## Setup
+## Setup ⚙️
 
 ### Step 1: Add opo to your repo
 
@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/prathamdby/opo/main/install.sh | ba
 
 ---
 
-## Usage
+## Usage 📋
 
 ### From a GitHub issue or PR
 
@@ -69,7 +69,7 @@ gh workflow run agent.yml -f task="add input validation to the signup form"
 
 ---
 
-## Writing effective tasks
+## Writing effective tasks ✍️
 
 Tasks that specify what, where, and why produce better PRs.
 
@@ -89,7 +89,7 @@ Vague tasks like "fix the bug" or "make it better" force opo to guess; guessing 
 
 ---
 
-## How it works
+## How it works 🔧
 
 1. opo reads `AGENTS.md` for context about your project
 2. It edits the relevant files
@@ -100,7 +100,7 @@ Nothing merges automatically.
 
 ---
 
-## Customizing
+## Customizing 🎨
 
 Edit `AGENTS.md` to tell opo about your project. It reads this file before every task. Effective additions:
 
@@ -114,7 +114,7 @@ Keep it short. A focused 30–50 line file outperforms a 300 line wall of text. 
 
 ---
 
-## Reference
+## Reference 📖
 
 - **Tasks.** Be specific. Say what to change and where. See [Writing effective tasks](#writing-effective-tasks) for examples.
 - **Rate limits.** If the primary model is rate-limited, opo retries with a fallback automatically.
@@ -124,6 +124,6 @@ Keep it short. A focused 30–50 line file outperforms a 300 line wall of text. 
 
 ---
 
-## License
+## License 📜
 
 [MIT](LICENSE)
