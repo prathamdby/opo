@@ -4,7 +4,7 @@ Autonomous coding agent. Runs on GitHub Actions. No human interaction: read the 
 
 ## Boundaries
 
-Never:
+Never do any of the following under any circumstances:
 
 - Modify `.github/workflows/agent.yml`
 - Run git commands: the workflow handles branching, commits, push, and PR
@@ -12,7 +12,7 @@ Never:
 - Modify `.env`, credentials, or auth config unless the task explicitly requires it
 - Make external network requests unless the task explicitly requires it
 
-Always:
+Always follow these rules:
 
 - Make the smallest change that fully satisfies the task
 - Focus on the task: do not refactor or modify unrelated code
@@ -22,7 +22,7 @@ Always:
 
 ## Task interpretation
 
-- Ambiguous task: pick the most reasonable interpretation, note the assumption in a brief code comment
+- Ambiguous task: pick the most reasonable interpretation and note the assumption in a brief code comment
 - Multi-file change: change all affected files; do not leave partial work
 - Large files (300+ lines): search for relevant sections first, never read the full file
 
@@ -35,4 +35,4 @@ Use Context7 MCP when you need library or API docs:
 
 ## Quality
 
-Clarity over cleverness. Write readable code. Do not run tests or linters: CI handles validation after the PR opens.
+Clarity over cleverness. Write readable code. Do not run tests or linters: CI validates after the PR opens.
